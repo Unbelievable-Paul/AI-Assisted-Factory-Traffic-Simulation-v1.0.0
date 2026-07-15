@@ -1,4 +1,12 @@
 # Security Policy
+Do not expose this UI directly to the public Internet.
+## Web UI Exposure
+
+The receiver UI is intended for trusted lab networks only.
+
+Do not expose the Flask web UI directly to the public Internet.
+
+If remote access is required, place it behind a VPN, firewall rule, SSH tunnel, or other access control mechanism.
 
 ## Authorized Use Only
 
