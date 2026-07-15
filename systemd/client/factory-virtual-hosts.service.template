@@ -6,9 +6,9 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=root
-WorkingDirectory=/opt/factory-network-visibility-lab/client
-ExecStart=/usr/bin/env PARENT_IF=<parent_interface> GATEWAY=<gateway_ip> /opt/factory-network-visibility-lab/client/setup_virtual_hosts.sh
-ExecStop=/opt/factory-network-visibility-lab/client/cleanup_virtual_hosts.sh
+WorkingDirectory=/opt/factory-network-visibility-lab/scripts/client
+ExecStart=/usr/bin/env PARENT_IF=<parent_interface> GATEWAY=<gateway_ip> /opt/factory-network-visibility-lab/scripts/client/setup_virtual_hosts.sh
+ExecStop=/opt/factory-network-visibility-lab/scripts/client/cleanup_virtual_hosts.sh
 RemainAfterExit=yes
 
 [Install]
