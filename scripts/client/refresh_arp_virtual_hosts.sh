@@ -2,7 +2,7 @@
 set -euo pipefail
 
 GATEWAY_IP="${GATEWAY_IP:-<gateway_ip>}"
-VISIBILITY_BRIDGE_IP="${VISIBILITY_BRIDGE_IP:-<netkeeper_bridge_ip>}"
+VISIBILITY_BRIDGE_IP="${VISIBILITY_BRIDGE_IP:-<Network_Visibility_Platform_bridge_ip>}"
 
 TARGETS=(
   "${GATEWAY_IP}"
