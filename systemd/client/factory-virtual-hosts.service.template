@@ -1,0 +1,15 @@
+[Unit]
+Description=Factory Virtual Hosts using Linux namespaces and macvlan
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/factory-network-visibility-lab/client
+ExecStart=/usr/bin/env PARENT_IF=<parent_interface> GATEWAY=<gateway_ip> /opt/factory-network-visibility-lab/client/setup_virtual_hosts.sh
+ExecStop=/opt/factory-network-visibility-lab/client/cleanup_virtual_hosts.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
