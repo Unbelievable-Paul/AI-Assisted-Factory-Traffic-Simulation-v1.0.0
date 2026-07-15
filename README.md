@@ -50,9 +50,9 @@ Router / Firewall / NAT
         |
         v
 Receiver Server with Unified UI
-
+```
 ## Receiver Services
-
+```
 factory-cell-server.service
   TCP 445
   TCP 1433
@@ -75,9 +75,9 @@ factory-extra-receiver.service
   UDP 514
   UDP 161
   UDP 47808
-
+```
 ## Example Virtual Devices
-
+```
 fe01
   Role: Engineering Workstation
 
@@ -92,10 +92,10 @@ edge01
 
 maint01
   Role: Maintenance Laptop
-
+```
 ## What the Unified UI Displays
-# The receiver UI displays:
-
+### The receiver UI displays:
+```
 Received event count
 Virtual source IP
 NAT source IP
@@ -108,11 +108,11 @@ Traffic group
 Message type
 Recent timeline
 Aggregated flow records
-
+```
 ## Sanitization Policy
-# All environment-specific data must be replaced before publishing.
-# Examples:
-
+### All environment-specific data must be replaced before publishing.
+### Examples:
+```
 <receiver_server_ip>
 <client_vm_ip>
 <gateway_ip>
@@ -123,11 +123,11 @@ Aggregated flow records
 <your_password>
 <your_company_domain>
 <your_vm_id>
-
+```
 ## Version
 
 v1.0
 Stable baseline demo model
 
 ## License
-# See /LICENSE.
+### See /LICENSE.
