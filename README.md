@@ -51,6 +51,14 @@ Router / Firewall / NAT
         v
 Receiver Server with Unified UI
 ```
+## Terminology
+
+In this repository, `Network Visibility Platform` means any software, hardware appliance, bridge, sensor, IDS/IPS, NDR, flow monitor, traffic monitoring system, or whitelist-learning platform that can observe, record, classify, or analyze network traffic.
+
+A router or firewall may provide partial visibility through ARP tables, state tables, firewall logs, or traffic logs. However, in this architecture, the router/firewall/NAT role is documented separately from the Network Visibility Platform role.
+
+This v1.0 lab used pfSense as an example router/firewall/NAT component. Other open-source firewall or routing platforms may be used if they provide equivalent routing, firewall, NAT, and logging functions.
+
 ## Receiver Services
 ```
 factory-cell-server.service
@@ -116,7 +124,7 @@ Aggregated flow records
 <receiver_server_ip>
 <client_vm_ip>
 <gateway_ip>
-<Network_Visibility_Platform_bridge_ip>
+<visibility_platform_bridge_ip>
 <pfsense_ip>
 <your_hostname>
 <your_username>
