@@ -1,0 +1,19 @@
+[Unit]
+Description=Factory Extra Receiver Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=<receiver_username>
+WorkingDirectory=/opt/factory-network-visibility-lab/receiver
+ExecStart=/usr/bin/env RECEIVER_SERVER_IP=<receiver_server_ip> RECEIVER_BASE_DIR=/opt/factory-network-visibility-lab/runtime/factory-server EXTRA_RECEIVER_BASE_DIR=/opt/factory-network-visibility-lab/runtime/factory-extra-receiver /usr/bin/python3 /opt/factory-network-visibility-lab/receiver/factory_extra_receiver.py
+Restart=always
+RestartSec=5
+
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+LimitNOFILE=8192
+
+[Install]
+WantedBy=multi-user.target
