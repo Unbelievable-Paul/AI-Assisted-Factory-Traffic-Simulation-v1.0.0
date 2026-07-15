@@ -11,7 +11,7 @@ Before committing any file, remove or replace environment-specific information.
 | Receiver server IP | `<receiver_server_ip>` |
 | Client VM IP | `<client_vm_ip>` |
 | Gateway IP | `<gateway_ip>` |
-| NetKeeper bridge IP | `<netkeeper_bridge_ip>` |
+| Network_Visibility_Platform bridge IP | `<Network_Visibility_Platform_bridge_ip>` |
 | pfSense IP | `<pfsense_ip>` |
 | Hostname | `<your_hostname>` |
 | Username | `<your_username>` |
