@@ -27,7 +27,12 @@ done
 
 echo "[INFO] Checking for likely IPv4 addresses..."
 
-if grep -RInE --exclude-dir=.git --exclude="validate_sanitization.sh" '(^|[^0-9])([0-9]{1,3}\.){3}[0-9]{1,3}([^0-9]|$)' .; then
+IP_MATCHES="$(grep -RInE --exclude-dir=.git --exclude="validate_sanitization.sh" '(^|[^0-9])([0-9]{1,3}\.){3}[0-9]{1,3}([^0-9]|$)' . || true)"
+
+IP_MATCHES_FILTERED="$(echo "$IP_MATCHES" | grep -Ev '0\.0\.0\.0|127\.0\.0\.1|255\.255\.255\.255' || true)"
+
+if [ -n "$IP_MATCHES_FILTERED" ]; then
+  echo "$IP_MATCHES_FILTERED"
   echo "[WARN] Found IPv4-looking values."
   echo "[WARN] Review each match. Replace real environment IP addresses with placeholders."
   FAILED=1
