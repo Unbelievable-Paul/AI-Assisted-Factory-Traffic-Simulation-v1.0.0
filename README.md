@@ -78,6 +78,42 @@ sop/SOP_02_client_generator_setup.md
 sop/SOP_03_validation_steps.md
 sop/SOP_04_demo_procedure.md
 ```
+## Beginner-friendly AI Assistance Prompt
+
+If you are completely new to Linux, networking, GitHub, systemd, Python, or virtual lab setup, you can download this repository as a `.zip` file and upload it to a large language model such as ChatGPT, Claude, Gemini, or another AI assistant.
+
+You may ask the AI assistant to explain the project structure, summarize the purpose of each file, and guide you step by step through adapting the lab to your own authorized environment.
+
+Example prompt:
+
+```text
+I am a beginner. I downloaded this GitHub repository as a zip file.
+
+Please review the repository structure and explain what each folder and file does.
+
+Then guide me step by step to set up this project in my own authorized lab environment.
+
+Important:
+- Do not assume any real IP address, hostname, username, or password.
+- Ask me before replacing placeholders such as <receiver_server_ip>, <client_vm_ip>, <gateway_ip>, <visibility_platform_bridge_ip>, <pfsense_ip>, <receiver_username>, and <client_username>.
+- Explain every command before asking me to run it.
+- Keep the setup defensive and benign.
+- Do not add traffic flooding, exploit logic, unauthorized scanning, brute force behavior, or offensive security features.
+- Help me verify each step before moving to the next step.
+```
+AI Assistance Disclaimer
+```
+AI-generated explanations and setup instructions are for reference only.
+
+This repository is provided as a sanitized educational and lab reference. Users are responsible for reviewing, understanding, testing, and validating all commands, scripts, configurations, and modifications before running them.
+
+Do not run this project on networks, systems, or environments where you do not have explicit authorization.
+
+The authors and contributors are not responsible for any damage, data loss, service disruption, misconfiguration, legal issue, policy violation, or other consequence caused by using, modifying, deploying, or following AI-generated instructions based on this repository.
+
+Use this project at your own risk.
+```
+
 ## High-level Architecture
 
 ```text
