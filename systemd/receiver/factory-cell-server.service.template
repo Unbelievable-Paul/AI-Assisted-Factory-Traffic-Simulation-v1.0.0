@@ -6,8 +6,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=<receiver_username>
-WorkingDirectory=/opt/factory-network-visibility-lab/receiver
-ExecStart=/usr/bin/env RECEIVER_SERVER_IP=<receiver_server_ip> WEB_UI_PORT=8080 RECEIVER_BASE_DIR=/opt/factory-network-visibility-lab/runtime/factory-server /usr/bin/python3 /opt/factory-network-visibility-lab/receiver/factory_cell_server.py
+WorkingDirectory=/opt/factory-network-visibility-lab/scripts/receiver
+ExecStart=/usr/bin/env RECEIVER_SERVER_IP=<receiver_server_ip> WEB_UI_PORT=8080 RECEIVER_BASE_DIR=/opt/factory-network-visibility-lab/runtime/factory-server /usr/bin/python3 /opt/factory-network-visibility-lab/scripts/receiver/factory_cell_server.py
 Restart=always
 RestartSec=5
 
