@@ -101,9 +101,16 @@ All environment-specific values must be replaced with placeholders.
 Client VM: <client_vm_ip>
 Receiver Server: <receiver_server_ip>
 Gateway: <gateway_ip>
-Network Visibility Device: <Network_Visibility_Platform_bridge_ip>
+Network Visibility Platform: <visibility_platform_bridge_ip>
 Router / Firewall / NAT: <pfsense_ip>
 ```
+## Router / Firewall / NAT Note
+
+This lab used pfSense as the example router/firewall/NAT component.
+
+pfSense is not required. Other open-source firewall or routing platforms may be used if they support the required routing, firewall, NAT, port forwarding, state table, and logging functions.
+
+In this repository, the Network Visibility Platform and the router/firewall/NAT component are documented as separate roles, even if a real-world product can provide both functions.
 
 ## v1.0 Scope
 
