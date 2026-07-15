@@ -7,8 +7,8 @@ Requires=factory-virtual-hosts.service
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/factory-network-visibility-lab/client
-ExecStart=/usr/bin/env RECEIVER_SERVER_IP=<receiver_server_ip> CLIENT_LOG_DIR=/opt/factory-network-visibility-lab/runtime/factory-lab/logs MIN_INTERVAL_SECONDS=2 MAX_INTERVAL_SECONDS=8 /usr/bin/python3 /opt/factory-network-visibility-lab/client/factory_traffic_generator.py
+WorkingDirectory=/opt/factory-network-visibility-lab/scripts/client
+ExecStart=/usr/bin/env RECEIVER_SERVER_IP=<receiver_server_ip> CLIENT_LOG_DIR=/opt/factory-network-visibility-lab/runtime/factory-lab/logs MIN_INTERVAL_SECONDS=2 MAX_INTERVAL_SECONDS=8 /usr/bin/python3 /opt/factory-network-visibility-lab/scripts/client/factory_traffic_generator.py
 Restart=always
 RestartSec=5
 
