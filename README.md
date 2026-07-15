@@ -116,7 +116,7 @@ Aggregated flow records
 <receiver_server_ip>
 <client_vm_ip>
 <gateway_ip>
-<netkeeper_bridge_ip>
+<Network_Visibility_Platform_bridge_ip>
 <pfsense_ip>
 <your_hostname>
 <your_username>
