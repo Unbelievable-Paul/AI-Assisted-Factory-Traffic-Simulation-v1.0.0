@@ -216,3 +216,35 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Lab logs and runtime output
+*.log
+*.jsonl
+*.csv
+logs/
+runtime/
+output/
+
+# Backups
+*.bak
+*.old
+*.broken
+backup_current_working_version/
+
+# Secrets and local config
+.env
+*.pem
+*.key
+*.crt
+id_rsa
+id_ed25519
+known_hosts
+
+# Screenshots with sensitive data
+screenshots/private/
+
+# Local generated files
+__pycache__/
+*.pyc
+.venv/
+venv/
