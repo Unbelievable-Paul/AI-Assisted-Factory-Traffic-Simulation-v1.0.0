@@ -101,8 +101,8 @@ Important:
 - Do not add traffic flooding, exploit logic, unauthorized scanning, brute force behavior, or offensive security features.
 - Help me verify each step before moving to the next step.
 ```
-AI Assistance Disclaimer
-```
+## AI Assistance Disclaimer
+
 AI-generated explanations and setup instructions are for reference only.
 
 This repository is provided as a sanitized educational and lab reference. Users are responsible for reviewing, understanding, testing, and validating all commands, scripts, configurations, and modifications before running them.
@@ -112,7 +112,7 @@ Do not run this project on networks, systems, or environments where you do not h
 The authors and contributors are not responsible for any damage, data loss, service disruption, misconfiguration, legal issue, policy violation, or other consequence caused by using, modifying, deploying, or following AI-generated instructions based on this repository.
 
 Use this project at your own risk.
-```
+
 
 ## High-level Architecture
 
