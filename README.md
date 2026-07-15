@@ -36,6 +36,42 @@ The v1.0 model contains two major components:
 
    The client VM creates multiple virtual factory devices using Linux network namespaces and macvlan interfaces. Each virtual device has a unique virtual IP, MAC address, role, and traffic profile.
 
+## Quick Start
+
+This repository is a sanitized public reference version.
+
+Before running the lab, replace all placeholder values such as:
+
+```text
+<receiver_server_ip>
+<client_vm_ip>
+<gateway_ip>
+<visibility_platform_bridge_ip>
+<pfsense_ip>
+<receiver_username>
+<client_username>
+<parent_interface>
+<virtual_device_ip_01>
+<virtual_mac_01>
+```
+Install Python dependencies on the receiver server:
+```
+pip install -r requirements.txt
+```
+Common Linux tools required on the client VM include:
+```
+iproute2
+netcat
+ping
+systemd
+```
+Then follow the SOP files:
+```
+sop/SOP_01_receiver_server_setup.md
+sop/SOP_02_client_generator_setup.md
+sop/SOP_03_validation_steps.md
+sop/SOP_04_demo_procedure.md
+```
 ## High-level Architecture
 
 ```text
