@@ -101,7 +101,7 @@ All environment-specific values must be replaced with placeholders.
 Client VM: <client_vm_ip>
 Receiver Server: <receiver_server_ip>
 Gateway: <gateway_ip>
-Network Visibility Device: <netkeeper_bridge_ip>
+Network Visibility Device: <Network_Visibility_Platform_bridge_ip>
 Router / Firewall / NAT: <pfsense_ip>
 ```
 
