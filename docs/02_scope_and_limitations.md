@@ -63,7 +63,7 @@ Possible future versions may add:
 - TX/RX counters
 - latency calculation
 - loss-rate calculation
-- NetKeeper log parser
+- Network_Visibility_Platform log parser
 - CSV reporting
 
 Those features should still remain within authorized defensive lab use only.
