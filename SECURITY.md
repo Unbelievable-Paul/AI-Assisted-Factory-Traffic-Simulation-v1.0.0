@@ -1,12 +1,5 @@
 # Security Policy
-Do not expose this UI directly to the public Internet.
-## AI-generated Guidance
 
-Users may use AI assistants to help understand or adapt this repository.
-
-However, AI-generated guidance may be incomplete, incorrect, unsafe for a specific environment, or unsuitable for a particular network design.
-
-Users are solely responsible for reviewing and validating all AI-generated commands, scripts, and configuration changes before applying them.
 ## Web UI Exposure
 
 The receiver UI is intended for trusted lab networks only.
@@ -14,6 +7,14 @@ The receiver UI is intended for trusted lab networks only.
 Do not expose the Flask web UI directly to the public Internet.
 
 If remote access is required, place it behind a VPN, firewall rule, SSH tunnel, or other access control mechanism.
+
+## AI-generated Guidance
+
+Users may use AI assistants to help understand or adapt this repository.
+
+However, AI-generated guidance may be incomplete, incorrect, unsafe for a specific environment, or unsuitable for a particular network design.
+
+Users are solely responsible for reviewing and validating all AI-generated commands, scripts, and configuration changes before applying them.
 
 ## Authorized Use Only
 
