@@ -65,6 +65,12 @@ netcat
 ping
 systemd
 ```
+If scripts are copied from GitHub without executable permissions, either run them with `bash` or set executable permissions:
+
+```bash
+chmod +x scripts/client/*.sh
+chmod +x scripts/tools/*.sh
+```
 Then follow the SOP files:
 ```
 sop/SOP_01_receiver_server_setup.md
