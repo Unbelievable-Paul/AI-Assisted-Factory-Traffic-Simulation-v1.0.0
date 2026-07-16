@@ -216,4 +216,4 @@ v1.0
 Stable baseline demo model
 
 ## License
-### See /LICENSE.
+### See [LICENSE](MIT License).
