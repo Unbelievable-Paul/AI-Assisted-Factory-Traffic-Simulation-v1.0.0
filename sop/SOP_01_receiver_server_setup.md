@@ -1,6 +1,6 @@
 # SOP 01 - Receiver Server Setup
 
-This SOP describes the receiver server setup for Factory Network Visibility Lab v1.0.
+This SOP describes the receiver server setup for Factory Network Visibility Lab v1.0.1.
 
 All environment-specific values must be replaced with placeholders before publishing.
 
@@ -29,7 +29,10 @@ The factory cell server listens on:
 TCP 445
 TCP 1433
 TCP 3389
-TCP 10001-11000
+TCP 10001
+TCP 10274
+TCP 10555
+TCP 10888
 TCP 8080 for Web UI
 ```
 
@@ -39,8 +42,15 @@ Purpose:
 SMB-style file sync
 MES SQL-style traffic
 RDP-style maintenance traffic
-Vendor private machine channels
+Selected vendor-style machine channels
 Unified receiver web UI
+```
+
+Important:
+
+```text
+Do not open the full 10001-11000 TCP range for the demo receiver.
+Only the selected vendor-style demo ports are needed.
 ```
 
 ## Service 2: Factory Extra Receiver
@@ -57,7 +67,6 @@ TCP 5672
 TCP 5900
 TCP 6514
 TCP 8443
-
 UDP 53
 UDP 123
 UDP 514
@@ -98,6 +107,12 @@ Open the UI with:
 http://<receiver_server_ip>:8080
 ```
 
+The web UI also provides:
+
+```text
+http://<receiver_server_ip>:8080/health
+```
+
 ## Validation
 
 Check service status:
@@ -116,7 +131,7 @@ active (running)
 Check listening ports:
 
 ```bash
-sudo ss -tulpn | grep -E ':(445|1433|3389|10001|102|502|4840|1883|8883|5672|5900|6514|8443|8080)'
+sudo ss -tulpn | grep -E ':(445|1433|3389|10001|10274|10555|10888|102|502|4840|1883|8883|5672|5900|6514|8443|8080)'
 ```
 
 ## Notes

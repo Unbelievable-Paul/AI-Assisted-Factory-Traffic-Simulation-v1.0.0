@@ -20,7 +20,10 @@ The ports are intentionally documented clearly because they are part of the publ
 | 5900 | VNC-style Maintenance | Remote maintenance screen access simulation |
 | 6514 | Syslog over TLS | Secure log transport simulation |
 | 8443 | Vendor Web Console | HTTPS-style device management console simulation |
-| 10001-11000 | Vendor Private Range | Vendor-specific machine channels |
+| 10001 | Machine Heartbeat Channel | Vendor-style machine heartbeat simulation |
+| 10274 | Factory Cell Vendor Channel | Vendor-style factory cell communication simulation |
+| 10555 | Quality Inspection Channel | Vendor-style quality inspection result simulation |
+| 10888 | Maintenance Diagnostic Channel | Vendor-style maintenance diagnostics simulation |
 
 ## UDP Ports
 
@@ -35,5 +38,8 @@ The ports are intentionally documented clearly because they are part of the publ
 ## Notes
 
 These ports are used only for benign lab traffic generation.
+
+The receiver intentionally does not listen on every TCP port from `10001` to `11000`.  
+Only specific vendor demo ports are used to keep the long-running demo lightweight.
 
 This project does not implement real industrial protocol logic. It only simulates structured traffic patterns for visibility and logging.
