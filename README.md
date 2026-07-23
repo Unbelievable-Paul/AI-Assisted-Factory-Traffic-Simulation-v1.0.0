@@ -28,11 +28,11 @@ It is not affiliated with, endorsed by, or sponsored by OpenAI.
 
 The v1.0 model contains two major components:
 
-1. Receiver Server
+1. **Receiver Server**
 
    The receiver server listens on multiple factory-style TCP and UDP ports and provides a unified web UI.
 
-2. Client Traffic Generator
+2. **Client Traffic Generator**
 
    The client VM creates multiple virtual factory devices using Linux network namespaces and macvlan interfaces. Each virtual device has a unique virtual IP, MAC address, role, and traffic profile.
 
@@ -54,30 +54,38 @@ Before running the lab, replace all placeholder values such as:
 <virtual_device_ip_01>
 <virtual_mac_01>
 ```
+
 Install Python dependencies on the receiver server:
-```
+
+```bash
 pip install -r requirements.txt
 ```
+
 Common Linux tools required on the client VM include:
-```
+
+```text
 iproute2
 netcat
 ping
 systemd
 ```
+
 If scripts are copied from GitHub without executable permissions, either run them with `bash` or set executable permissions:
 
 ```bash
 chmod +x scripts/client/*.sh
 chmod +x scripts/tools/*.sh
 ```
+
 Then follow the SOP files:
-```
+
+```text
 sop/SOP_01_receiver_server_setup.md
 sop/SOP_02_client_generator_setup.md
 sop/SOP_03_validation_steps.md
 sop/SOP_04_demo_procedure.md
 ```
+
 ## Beginner-friendly AI Assistance Prompt
 
 If you are completely new to Linux, networking, GitHub, systemd, Python, or virtual lab setup, you can download this repository as a `.zip` file and upload it to a large language model such as ChatGPT, Claude, Gemini, or another AI assistant.
@@ -101,6 +109,7 @@ Important:
 - Do not add traffic flooding, exploit logic, unauthorized scanning, brute force behavior, or offensive security features.
 - Help me verify each step before moving to the next step.
 ```
+
 ## AI Assistance Disclaimer
 
 AI-generated explanations and setup instructions are for reference only.
@@ -112,7 +121,6 @@ Do not run this project on networks, systems, or environments where you do not h
 The authors and contributors are not responsible for any damage, data loss, service disruption, misconfiguration, legal issue, policy violation, or other consequence caused by using, modifying, deploying, or following AI-generated instructions based on this repository.
 
 Use this project at your own risk.
-
 
 ## High-level Architecture
 
@@ -129,6 +137,7 @@ Router / Firewall / NAT
         v
 Receiver Server with Unified UI
 ```
+
 ## Terminology
 
 In this repository, `Network Visibility Platform` means any software, hardware appliance, bridge, sensor, IDS/IPS, NDR, flow monitor, traffic monitoring system, or whitelist-learning platform that can observe, record, classify, or analyze network traffic.
@@ -138,12 +147,16 @@ A router or firewall may provide partial visibility through ARP tables, state ta
 This v1.0 lab used pfSense as an example router/firewall/NAT component. Other open-source firewall or routing platforms may be used if they provide equivalent routing, firewall, NAT, and logging functions.
 
 ## Receiver Services
-```
+
+```text
 factory-cell-server.service
   TCP 445
   TCP 1433
   TCP 3389
-  TCP 10001-11000
+  TCP 10001
+  TCP 10274
+  TCP 10555
+  TCP 10888
   Web UI 8080
 
 factory-extra-receiver.service
@@ -162,8 +175,27 @@ factory-extra-receiver.service
   UDP 161
   UDP 47808
 ```
-## Example Virtual Devices
+
+## Stability Hardening in v1.0.1
+
+The v1.0.1 patch reduces long-running demo risk:
+
+- The receiver no longer opens every TCP port from `10001` to `11000`.
+- The receiver listens only on specific vendor demo ports: `10001`, `10274`, `10555`, and `10888`.
+- The Web UI port `8080` is reserved for the UI and should not receive raw demo TCP payloads.
+- The receiver UI reads only the latest demo records.
+- Receiver and client demo logs are bounded.
+- A `/health` endpoint is available on the receiver UI service.
+
+See:
+
+```text
+docs/07_stability_hardening_notes.md
 ```
+
+## Example Virtual Devices
+
+```text
 fe01
   Role: Engineering Workstation
 
@@ -179,9 +211,12 @@ edge01
 maint01
   Role: Maintenance Laptop
 ```
+
 ## What the Unified UI Displays
-### The receiver UI displays:
-```
+
+The receiver UI displays:
+
+```text
 Received event count
 Virtual source IP
 NAT source IP
@@ -195,10 +230,14 @@ Message type
 Recent timeline
 Aggregated flow records
 ```
+
 ## Sanitization Policy
-### All environment-specific data must be replaced before publishing.
-### Examples:
-```
+
+All environment-specific data must be replaced before publishing.
+
+Examples:
+
+```text
 <receiver_server_ip>
 <client_vm_ip>
 <gateway_ip>
@@ -210,10 +249,11 @@ Aggregated flow records
 <your_company_domain>
 <your_vm_id>
 ```
+
 ## Version
 
-v1.0
-Stable baseline demo model
+v1.0.1 Stability hardening patch for the v1.0 baseline demo model.
 
 ## License
-### See [LICENSE](MIT License).
+
+See [LICENSE](LICENSE).

@@ -1,13 +1,29 @@
 #!/usr/bin/env python3
 
+import collections
 import html
 import json
 import os
 import socket
 import threading
 from datetime import datetime
-from flask import Flask, redirect
+from flask import Flask, jsonify, redirect
 
+
+# ============================================================
+# Factory Cell Receiver Server - safer demo version
+#
+# Stability changes:
+# 1. Do NOT listen on every TCP port from 10001 to 11000.
+#    Only listen on the vendor ports used by the demo generator.
+# 2. UI reads only the latest UI_MAX_LINES records.
+# 3. Event log is automatically trimmed when it grows too large.
+# 4. /health endpoint added for quick service checks.
+#
+# Scope:
+# This is a benign defensive lab receiver for authorized demos.
+# It is not a traffic stress test, exploit framework, or pentest tool.
+# ============================================================
 
 SERVER_IP = os.getenv("RECEIVER_SERVER_IP", "<receiver_server_ip>")
 WEB_PORT = int(os.getenv("WEB_UI_PORT", "8080"))
@@ -16,39 +32,36 @@ BASE_DIR = os.getenv("RECEIVER_BASE_DIR", "./runtime/factory-server")
 LOG_DIR = os.path.join(BASE_DIR, "logs")
 EVENT_LOG = os.path.join(LOG_DIR, "factory_cell_events.jsonl")
 
+UI_MAX_LINES = int(os.getenv("UI_MAX_LINES", "1000"))
+TIMELINE_MAX_ROWS = int(os.getenv("TIMELINE_MAX_ROWS", "200"))
+MAX_LOG_BYTES = int(os.getenv("MAX_LOG_BYTES", str(10 * 1024 * 1024)))
+KEEP_LOG_LINES = int(os.getenv("KEEP_LOG_LINES", "1000"))
+
+# Do not open the full 10001-11000 demo range.
+# Only keep specific vendor ports used by the generator.
+LISTEN_PORTS = [
+    445,
+    1433,
+    3389,
+    10001,
+    10274,
+    10555,
+    10888,
+]
+
 app = Flask(__name__)
-lock = threading.Lock()
 
 FAILED_BINDS = []
-LISTEN_PORTS = [445, 1433, 3389] + list(range(10001, 11001))
+FAILED_BINDS_LOCK = threading.Lock()
+EVENT_LOG_LOCK = threading.Lock()
 
 
 DEVICE_MAP = {
-    "fe01": {
-        "ip": "<virtual_device_ip_01>",
-        "mac": "<virtual_mac_01>",
-        "role": "Engineering Workstation",
-    },
-    "cell01": {
-        "ip": "<virtual_device_ip_02>",
-        "mac": "<virtual_mac_02>",
-        "role": "Factory Cell Controller",
-    },
-    "hmi01": {
-        "ip": "<virtual_device_ip_03>",
-        "mac": "<virtual_mac_03>",
-        "role": "HMI SCADA Station",
-    },
-    "edge01": {
-        "ip": "<virtual_device_ip_04>",
-        "mac": "<virtual_mac_04>",
-        "role": "IIoT Edge Gateway",
-    },
-    "maint01": {
-        "ip": "<virtual_device_ip_05>",
-        "mac": "<virtual_mac_05>",
-        "role": "Maintenance Laptop",
-    },
+    "fe01": {"ip": "<virtual_device_ip_01>", "mac": "<virtual_mac_01>", "role": "Engineering Workstation"},
+    "cell01": {"ip": "<virtual_device_ip_02>", "mac": "<virtual_mac_02>", "role": "Factory Cell Controller"},
+    "hmi01": {"ip": "<virtual_device_ip_03>", "mac": "<virtual_mac_03>", "role": "HMI SCADA Station"},
+    "edge01": {"ip": "<virtual_device_ip_04>", "mac": "<virtual_mac_04>", "role": "IIoT Edge Gateway"},
+    "maint01": {"ip": "<virtual_device_ip_05>", "mac": "<virtual_mac_05>", "role": "Maintenance Laptop"},
 }
 
 
@@ -56,6 +69,10 @@ PORT_INFO = {
     445: ("SMB File Sync", "Factory Cell", "SMB style file transfer for recipe files, CSV logs, batch reports, and machine configuration files."),
     1433: ("MES SQL Query", "Factory Cell MES", "MES SQL traffic for work orders, lot numbers, serial numbers, yield data, and batch records."),
     3389: ("RDP Maintenance", "Maintenance", "RDP maintenance traffic for engineering access and remote troubleshooting."),
+    10001: ("Machine Heartbeat Channel", "Vendor Private", "Machine heartbeat and online status traffic."),
+    10274: ("Factory Cell Vendor Channel", "Vendor Private", "Factory cell private vendor channel used by simulated production equipment."),
+    10555: ("Quality Inspection Channel", "Vendor Private", "Quality inspection and pass/fail result traffic."),
+    10888: ("Maintenance Diagnostic Channel", "Vendor Private", "Diagnostic log and device self-test traffic."),
     102: ("Siemens S7 Communication", "ICS PLC", "Siemens S7 PLC communication for controller status, alarms, counters, and production data."),
     502: ("Modbus TCP", "ICS SCADA", "Modbus TCP traffic for registers, sensor values, equipment status, and process measurements."),
     4840: ("OPC UA", "ICS SCADA", "OPC UA traffic for telemetry, alarm events, production states, and structured machine data."),
@@ -73,20 +90,6 @@ PORT_INFO = {
 }
 
 
-VENDOR_RANGES = [
-    (10001, 10100, "Machine Heartbeat Channel", "Vendor Private", "Machine heartbeat and online status traffic."),
-    (10101, 10200, "Sensor Data Channel", "Vendor Private", "Sensor data, motor state, IO state, and process telemetry."),
-    (10201, 10300, "Alarm Event Channel", "Vendor Private", "Alarm event, warning, fault code, and interlock event traffic."),
-    (10301, 10400, "Recipe Parameter Channel", "Vendor Private", "Recipe parameter and process setting traffic."),
-    (10401, 10500, "Quality Inspection Channel", "Vendor Private", "Quality inspection and pass fail result traffic."),
-    (10501, 10600, "Robot Tool Telemetry", "Vendor Private", "Robot arm, tool head, and motion controller telemetry."),
-    (10601, 10700, "Utility Equipment Channel", "Vendor Private", "Utility equipment status traffic."),
-    (10701, 10800, "Line Buffer Tracking", "Vendor Private", "WIP buffer, station queue, and material tracking traffic."),
-    (10801, 10900, "Maintenance Diagnostic Channel", "Vendor Private", "Diagnostic log and device self test traffic."),
-    (10901, 11000, "Vendor Private Control Channel", "Vendor Private", "Vendor specific private control or status channel."),
-]
-
-
 def now_string():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -100,15 +103,7 @@ def describe_port(port):
         port_int = int(port)
     except Exception:
         return ("Unknown", "Unknown", "No description available.")
-
-    if port_int in PORT_INFO:
-        return PORT_INFO[port_int]
-
-    for start, end, service, group, description in VENDOR_RANGES:
-        if start <= port_int <= end:
-            return (service, group, description)
-
-    return ("Unknown", "Unknown", "No description available.")
+    return PORT_INFO.get(port_int, ("Unknown", "Unknown", "No description available."))
 
 
 def safe_json_loads(text):
@@ -118,10 +113,42 @@ def safe_json_loads(text):
         return {}
 
 
+def trim_event_log_if_needed():
+    if not os.path.exists(EVENT_LOG):
+        return
+
+    try:
+        size = os.path.getsize(EVENT_LOG)
+    except OSError:
+        return
+
+    if size <= MAX_LOG_BYTES:
+        return
+
+    try:
+        with open(EVENT_LOG, "r", encoding="utf-8", errors="replace") as f:
+            kept_lines = collections.deque(f, maxlen=KEEP_LOG_LINES) if KEEP_LOG_LINES > 0 else []
+
+        tmp_path = EVENT_LOG + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as tmp:
+            for line in kept_lines:
+                tmp.write(line)
+
+        os.replace(tmp_path, EVENT_LOG)
+        print(f"[LOG] Trimmed {EVENT_LOG}. Previous size={size} bytes. Kept last {KEEP_LOG_LINES} lines.", flush=True)
+
+    except Exception as e:
+        print(f"[LOG] Failed to trim event log: {e}", flush=True)
+
+
 def append_event(event):
     os.makedirs(LOG_DIR, exist_ok=True)
-    with open(EVENT_LOG, "a", encoding="utf-8") as f:
-        f.write(json.dumps(event, ensure_ascii=True) + "\n")
+    line = json.dumps(event, ensure_ascii=True) + "\n"
+
+    with EVENT_LOG_LOCK:
+        with open(EVENT_LOG, "a", encoding="utf-8") as f:
+            f.write(line)
+        trim_event_log_if_needed()
 
 
 def record_cell_event(socket_src_ip, socket_src_port, dst_port, protocol, raw_payload):
@@ -156,13 +183,13 @@ def record_cell_event(socket_src_ip, socket_src_port, dst_port, protocol, raw_pa
 
 
 def tcp_listener(port):
-    service, group, description = describe_port(port)
+    service, _group, _description = describe_port(port)
 
     try:
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_socket.bind(("0.0.0.0", port))
-        server_socket.listen(100)
+        server_socket.listen(50)
 
         print(f"[TCP] Listening on {port} - {service}", flush=True)
 
@@ -171,7 +198,7 @@ def tcp_listener(port):
             socket_src_ip, socket_src_port = client_address
 
             try:
-                client_socket.settimeout(3)
+                client_socket.settimeout(2)
 
                 try:
                     data = client_socket.recv(4096)
@@ -204,37 +231,37 @@ def tcp_listener(port):
                 print(f"[TCP] Error on port {port}: {e}", flush=True)
 
             finally:
-                client_socket.close()
+                try:
+                    client_socket.close()
+                except Exception:
+                    pass
 
     except Exception as e:
         msg = f"Failed to bind TCP {port} service={service} error={e}"
         print("[ERROR] " + msg, flush=True)
 
-        with lock:
+        with FAILED_BINDS_LOCK:
             FAILED_BINDS.append(msg)
 
 
-def load_events_from_file(max_lines=20000):
+def load_events_from_file(max_lines=UI_MAX_LINES):
     if not os.path.exists(EVENT_LOG):
         return []
 
     try:
-        with open(EVENT_LOG, "r", encoding="utf-8") as f:
-            lines = f.readlines()[-max_lines:]
+        with open(EVENT_LOG, "r", encoding="utf-8", errors="replace") as f:
+            lines = collections.deque(f, maxlen=max_lines)
     except Exception as e:
         print(f"[UI] Failed to read event log: {e}", flush=True)
         return []
 
     events = []
-
     for line in lines:
         line = line.strip()
         if not line:
             continue
-
         try:
-            event = json.loads(line)
-            events.append(event)
+            events.append(json.loads(line))
         except Exception:
             continue
 
@@ -288,29 +315,88 @@ def build_aggregated(events):
     return items, timeline
 
 
+@app.route("/health")
+def health():
+    try:
+        event_log_size = os.path.getsize(EVENT_LOG) if os.path.exists(EVENT_LOG) else 0
+    except OSError:
+        event_log_size = -1
+
+    with FAILED_BINDS_LOCK:
+        failed_binds = list(FAILED_BINDS)
+
+    return jsonify(
+        {
+            "status": "ok" if not failed_binds else "degraded",
+            "server_ip": SERVER_IP,
+            "web_port": WEB_PORT,
+            "listen_ports": LISTEN_PORTS,
+            "failed_bind_count": len(failed_binds),
+            "failed_binds": failed_binds,
+            "event_log": EVENT_LOG,
+            "event_log_size_bytes": event_log_size,
+            "ui_max_lines": UI_MAX_LINES,
+            "max_log_bytes": MAX_LOG_BYTES,
+            "keep_log_lines": KEEP_LOG_LINES,
+            "time": now_string(),
+        }
+    )
+
+
 @app.route("/")
 def index():
     events = load_events_from_file()
     aggregated, timeline = build_aggregated(events)
 
-    with lock:
+    with FAILED_BINDS_LOCK:
         failed_binds = list(FAILED_BINDS)
 
     unique_virtual_ips = sorted({item["virtual_src_ip"] for item in aggregated})
     unique_nat_ips = sorted({item["nat_src_ip"] for item in aggregated})
     unique_ports = sorted({str(item["dst_port"]) for item in aggregated})
 
+    try:
+        log_size = os.path.getsize(EVENT_LOG) if os.path.exists(EVENT_LOG) else 0
+    except OSError:
+        log_size = -1
+
     arch = """
-Client Traffic Generator VM
+Traffic Generator VM: <client_vm_hostname>
+Main IP: <client_vm_ip>
+Bridge: <client_bridge_name>
+
+  fe01     <virtual_device_ip_01>   <virtual_mac_01>   Engineering Workstation
+  cell01   <virtual_device_ip_02>   <virtual_mac_02>   Factory Cell Controller
+  hmi01    <virtual_device_ip_03>   <virtual_mac_03>   HMI SCADA Station
+  edge01   <virtual_device_ip_04>   <virtual_mac_04>   IIoT Edge Gateway
+  maint01  <virtual_device_ip_05>   <virtual_mac_05>   Maintenance Laptop
+
         |
         v
-Linux namespaces + macvlan virtual devices
+
+Network Visibility Platform Bridge
+Bridge IP: <visibility_platform_bridge_ip>
+
         |
         v
-Network visibility bridge / router / firewall
+
+Router / Firewall / NAT
+LAN: <router_lan_ip>
+WAN: <router_wan_ip>
+
         |
         v
-Receiver Server with Unified UI
+
+Receiver Server
+IP: <receiver_server_ip>
+
+Services:
+  factory-cell-server.service:
+    TCP 445, 1433, 3389, 10001, 10274, 10555, 10888, Web UI 8080
+
+  factory-extra-receiver.service:
+    TCP 102, 502, 4840, 1883, 8883, 5672, 5900, 6514, 8443
+    UDP 53, 123, 514, 161, 47808
 """
 
     page = []
@@ -322,118 +408,27 @@ Receiver Server with Unified UI
 <title>Factory Traffic Simulation UI</title>
 <meta http-equiv="refresh" content="5">
 <style>
-body {
-    font-family: Arial, Helvetica, sans-serif;
-    background: #f4f6f8;
-    color: #111827;
-    margin: 0;
-    padding: 0;
-}
-.header {
-    padding: 24px 28px 10px 28px;
-}
-h1 {
-    font-size: 34px;
-    margin: 0 0 8px 0;
-}
-.subtitle {
-    color: #4b5563;
-    font-size: 15px;
-}
-.cards {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    padding: 12px 28px;
-}
-.card {
-    background: white;
-    border-radius: 12px;
-    padding: 16px 22px;
-    min-width: 180px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-}
-.card-title {
-    font-size: 15px;
-}
-.card-value {
-    font-size: 32px;
-    color: #2563eb;
-    font-weight: bold;
-    margin-top: 4px;
-}
-.section {
-    background: white;
-    margin: 18px 28px;
-    border-radius: 12px;
-    padding: 18px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-}
-.table-wrap {
-    overflow-x: auto;
-    max-height: 430px;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-}
-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 1300px;
-}
-th {
-    position: sticky;
-    top: 0;
-    background: #1f2937;
-    color: white;
-    text-align: left;
-    padding: 10px;
-    z-index: 1;
-}
-td {
-    padding: 10px;
-    border-bottom: 1px solid #e5e7eb;
-    vertical-align: top;
-}
-tr:nth-child(even) {
-    background: #f9fafb;
-}
-.badge {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 999px;
-    background: #dbeafe;
-    color: #1d4ed8;
-    font-size: 12px;
-    font-weight: bold;
-}
-.button {
-    display: inline-block;
-    background: #dc2626;
-    color: white;
-    padding: 12px 18px;
-    border-radius: 10px;
-    text-decoration: none;
-    font-weight: bold;
-}
-.diagram {
-    font-family: monospace;
-    white-space: pre;
-    background: #111827;
-    color: #e5e7eb;
-    padding: 16px;
-    border-radius: 10px;
-    overflow-x: auto;
-    line-height: 1.45;
-}
-.payload {
-    font-family: monospace;
-    white-space: pre-wrap;
-    max-width: 520px;
-}
-.note {
-    color: #4b5563;
-    line-height: 1.6;
-}
+body { font-family: Arial, Helvetica, sans-serif; background: #f4f6f8; color: #111827; margin: 0; padding: 0; }
+.header { padding: 24px 28px 10px 28px; }
+h1 { font-size: 34px; margin: 0 0 8px 0; }
+.subtitle { color: #4b5563; font-size: 15px; }
+.cards { display: flex; flex-wrap: wrap; gap: 14px; padding: 12px 28px; }
+.card { background: white; border-radius: 12px; padding: 16px 22px; min-width: 180px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+.card-title { font-size: 15px; }
+.card-value { font-size: 32px; color: #2563eb; font-weight: bold; margin-top: 4px; }
+.section { background: white; margin: 18px 28px; border-radius: 12px; padding: 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.table-wrap { overflow-x: auto; max-height: 430px; border: 1px solid #e5e7eb; border-radius: 10px; }
+table { width: 100%; border-collapse: collapse; min-width: 1300px; }
+th { position: sticky; top: 0; background: #1f2937; color: white; text-align: left; padding: 10px; z-index: 1; }
+td { padding: 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+tr:nth-child(even) { background: #f9fafb; }
+.badge { display: inline-block; padding: 3px 8px; border-radius: 999px; background: #dbeafe; color: #1d4ed8; font-size: 12px; font-weight: bold; }
+.button { display: inline-block; background: #dc2626; color: white; padding: 12px 18px; border-radius: 10px; text-decoration: none; font-weight: bold; }
+.health-button { display: inline-block; background: #2563eb; color: white; padding: 12px 18px; border-radius: 10px; text-decoration: none; font-weight: bold; margin-left: 8px; }
+.diagram { font-family: monospace; white-space: pre; background: #111827; color: #e5e7eb; padding: 16px; border-radius: 10px; overflow-x: auto; line-height: 1.45; }
+.payload { font-family: monospace; white-space: pre-wrap; max-width: 520px; }
+.note { color: #4b5563; line-height: 1.6; }
+.warn { color: #92400e; background: #fef3c7; padding: 10px; border-radius: 8px; }
 </style>
 </head>
 <body>
@@ -446,6 +441,7 @@ tr:nth-child(even) {
         Receiver: {esc(SERVER_IP)} |
         Web UI: :{WEB_PORT} |
         Auto refresh: 5 seconds |
+        UI reads latest {UI_MAX_LINES} records only |
         Shared log: {esc(EVENT_LOG)}
     </div>
 </div>
@@ -453,22 +449,37 @@ tr:nth-child(even) {
 
     page.append(f"""
 <div class="cards">
-    <div class="card"><div class="card-title">Received Events</div><div class="card-value">{len(events)}</div></div>
+    <div class="card"><div class="card-title">Loaded Events</div><div class="card-value">{len(events)}</div></div>
     <div class="card"><div class="card-title">Virtual Source IPs</div><div class="card-value">{len(unique_virtual_ips)}</div></div>
     <div class="card"><div class="card-title">NAT Source IPs</div><div class="card-value">{len(unique_nat_ips)}</div></div>
     <div class="card"><div class="card-title">Tracked Flows</div><div class="card-value">{len(aggregated)}</div></div>
     <div class="card"><div class="card-title">Observed Ports</div><div class="card-value">{len(unique_ports)}</div></div>
     <div class="card"><div class="card-title">Failed Port Binds</div><div class="card-value">{len(failed_binds)}</div></div>
+    <div class="card"><div class="card-title">Event Log Size</div><div class="card-value">{esc(log_size)}</div></div>
 </div>
 """)
 
     page.append("""
 <div class="section">
     <a class="button" href="/reset">Reset Records</a>
+    <a class="health-button" href="/health">Health JSON</a>
     <p class="note">
-        The UI reads the shared JSONL event log. Traffic from both receiver services can be displayed here.
+        The UI reads only the latest demo records from the shared JSONL event log.
+        Old demo data is automatically trimmed when the log grows too large.
+        The Web UI runs on 8080, so the traffic generator should not send raw TCP payloads to 8080.
+        If a router or NAT exists between the generator and receiver, NAT Source IP may show the router or firewall address.
         Virtual Source IP is parsed from the payload sent by the namespace traffic generator.
     </p>
+</div>
+""")
+
+    if failed_binds:
+        page.append("""
+<div class="section">
+    <div class="warn">
+        Some TCP ports failed to bind. Check the Failed Port Binds section below and run:
+        sudo ss -tulpn
+    </div>
 </div>
 """)
 
@@ -484,14 +495,7 @@ tr:nth-child(even) {
     <h2>Virtual Factory Devices</h2>
     <div class="table-wrap">
     <table>
-        <thead>
-            <tr>
-                <th>Namespace</th>
-                <th>Virtual IP</th>
-                <th>MAC Address</th>
-                <th>Role</th>
-            </tr>
-        </thead>
+        <thead><tr><th>Namespace</th><th>Virtual IP</th><th>MAC Address</th><th>Role</th></tr></thead>
         <tbody>
 """)
 
@@ -519,18 +523,8 @@ tr:nth-child(even) {
     <table>
         <thead>
             <tr>
-                <th>Count</th>
-                <th>Virtual Source IP</th>
-                <th>NAT Source IP</th>
-                <th>Namespace</th>
-                <th>Role</th>
-                <th>Destination Port</th>
-                <th>Protocol</th>
-                <th>Service</th>
-                <th>Group</th>
-                <th>Last Message Type</th>
-                <th>Last Seen</th>
-                <th>Last Payload</th>
+                <th>Count</th><th>Virtual Source IP</th><th>NAT Source IP</th><th>Namespace</th><th>Role</th>
+                <th>Destination Port</th><th>Protocol</th><th>Service</th><th>Group</th><th>Last Message Type</th><th>Last Seen</th><th>Last Payload</th>
             </tr>
         </thead>
         <tbody>
@@ -568,22 +562,14 @@ tr:nth-child(even) {
     <table>
         <thead>
             <tr>
-                <th>Time</th>
-                <th>Virtual Source IP</th>
-                <th>NAT Source IP</th>
-                <th>Namespace</th>
-                <th>Role</th>
-                <th>Destination Port</th>
-                <th>Protocol</th>
-                <th>Service</th>
-                <th>Message Type</th>
-                <th>Description</th>
+                <th>Time</th><th>Virtual Source IP</th><th>NAT Source IP</th><th>Namespace</th><th>Role</th>
+                <th>Destination Port</th><th>Protocol</th><th>Service</th><th>Message Type</th><th>Description</th>
             </tr>
         </thead>
         <tbody>
 """)
 
-    for event in timeline[:200]:
+    for event in timeline[:TIMELINE_MAX_ROWS]:
         page.append(f"""
             <tr>
                 <td>{esc(event.get("time", ""))}</td>
@@ -636,7 +622,8 @@ tr:nth-child(even) {
 def reset():
     try:
         os.makedirs(LOG_DIR, exist_ok=True)
-        open(EVENT_LOG, "w", encoding="utf-8").close()
+        with EVENT_LOG_LOCK:
+            open(EVENT_LOG, "w", encoding="utf-8").close()
     except Exception as e:
         print(f"[UI] Failed to clear event log: {e}", flush=True)
 
@@ -650,12 +637,17 @@ def main():
     print("Factory Traffic Simulation UI starting", flush=True)
     print("Server IP: " + SERVER_IP, flush=True)
     print("Web UI: http://0.0.0.0:" + str(WEB_PORT), flush=True)
+    print("Health: http://0.0.0.0:" + str(WEB_PORT) + "/health", flush=True)
     print("Shared event log: " + EVENT_LOG, flush=True)
-    print("Listening TCP ports: 445, 1433, 3389, 10001-11000", flush=True)
+    print("UI max records: " + str(UI_MAX_LINES), flush=True)
+    print("Max log bytes: " + str(MAX_LOG_BYTES), flush=True)
+    print("Keep log lines: " + str(KEEP_LOG_LINES), flush=True)
+    print("Listening TCP ports: " + ", ".join(str(p) for p in LISTEN_PORTS), flush=True)
     print("============================================================", flush=True)
 
     for port in LISTEN_PORTS:
-        threading.Thread(target=tcp_listener, args=(port,), daemon=True).start()
+        thread = threading.Thread(target=tcp_listener, args=(port,), daemon=True, name=f"tcp-listener-{port}")
+        thread.start()
 
     app.run(host="0.0.0.0", port=WEB_PORT, debug=False, threaded=True)
 
